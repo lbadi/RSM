@@ -76,41 +76,107 @@ En el siguiente informe detallamos una implementación en Octave para el cálcul
 \section{Metodología}
 Se decidió implementar todos los métodos en Octave ya que nos resulta conveniente al tener que realizar operaciones de matrices, como el producto, porque las posee implementadas.
 Si bien para almacenar estas matrices se pueden utilizar estructuras como listas de listas o representaciones como Yale(utilización de 3 arrays), se opto por representarlas utilizando las matrices de Octave para poder utilizar las operaciones de matrices que este lenguaje ofrece. También se pensó en almacenarlas utilizando una estructura y a la hora de operar realizar una conversión a matrices de Octave. Se decidió no realizar esto ultimo por el costo de procesamiento que conlleva tener que estar haciendo conversiones constantemente.
-Para obtener los autovalores se decidió utilizar el método iterativo de QR visto en clase, con la salvedad de que este método tiene que contemplar los casos donde los autovalores son complejos. Se hizo que este método pueda trabajar con un error configurable, es decir pasado como parámetro, para que se pueda utilizar con distintas precisiones.
+Para obtener los autovalores se decidió utilizar el método iterativo de QR visto en clase, con la salvedad de que este método tiene que contemplar los casos donde los autovalores son complejos. Para determinar en que momento hace falta calcular estos valores complejos se decidió utilizar doble shifteos. 
+
+Para la descomposición QR se implemento el método de GS visto en la clase, el método modificado de GS y el método de las rotaciones de Givens.
 
 \subsection{Implementación}
-\subsubsection{Método QR}
+\subsubsection{Generación RSM}
 
-Para el cálculo de los autovalores, lo primero que tuvimos que implementar fue la descomposición QR. Como vemos en el código 1 utilizamos el método QR visto en clase. Para poder adaptar este algoritmo al lenguaje Java tuvimos que utilizar recursos propios del lenguaje. Para modelar las matrices Q y R que son devueltas por el método, utilizamos vectores de vectores en java ya que no contamos con la clase matriz. Para retornar las dos matrices, decidimos retornarlas en un mapa con sus respectivas claves (Q y R). Como el manejo de matrices no es aportado por el lenguaje Java, para obtener la columna de una matriz hicimos la función \texttt{getColumn}.  Con el primer ciclo se obtienen todas las columnas de la matriz Q, y a medida que se calculan los productos internos y las normas de los vectores e se colocan en su respectiva posición en la matriz R.
+Para la generación de las matrices RSM primero se generan dos matrices, una de números random y de dimensión N x NZR, la otra de ceros y de dimensiones N - NZR x N.
+Luego estas matrices se concatenan una debajo de la otra para formar una matriz de dimensiones N x N. Por ultimo se itera sobre todas las columnas y se permuta de manera aleatoria las filas utilizando la función randperm de Octave.
+Se puede demostrar que el orden de complejidad de esta función es \[N  O ( randperm ) \].
 
-\begin{lstlisting}[caption = Implementación de la descomposición QR en Java]
-	public static Map<String, double[][]> QR(double[][] m) {
-		Map<String, double[][]> res = new HashMap<String, double[][]>();
-		double[][] Q = new double[m.length][m.length];
-		double[][] R = new double[m.length][m[0].length];
-		List<double[]> q = new ArrayList<double[]>();
-		for (int k = 0; k < m[0].length; k++) {
-			double[] v = Vector.getColumn(m, k);
-			double[] e = v;
-			for (int n = 0; n < q.size(); n++) {
-				double p = Vector.prodInt(v, q.get(n));
-				e = Vector.sumVec(e, Vector.prodVectEsc(q.get(n), -p));
-				R[n][k] = p;
-			}
-			double norm2e = Vector.norm2(e);
-			R[k][k] = norm2e;
-			e = Vector.prodVectEsc(e, 1 / norm2e);
-			q.add(e);
-			for (int i = 0; i < e.length; i++)
-				Q[i][k] = e[i];
-		}
-		res.put("Q", Q);
-		res.put("R", R);
-		return res;
-	}
+\begin{lstlisting}[caption = Implementación del generador de matrices RSM]
+	function ret = generateRSM(N,NZR)
+		A = rand(NZR,N);
+		B = zeros(N-NZR,N);
+		A = [A ; B];
+
+		% Shuffle the matrix
+		for i = 1:N
+			ret(:,i) = A(randperm(N), i);
+		end
+	end
 \end{lstlisting}
 
-En la sección de resultados vamos a mostrar en comparación los tiempos obtenidos para hallar los autovalores de matrices GRCAR de varios tamaños.
+\subsubsection{Método QR - GS}
+
+Como se puede ver a continuación, se implemento el método de GS propuesto por la cátedra sin realizare ninguna modificación. Este método tiene la desventaja que como genera vectores de norma pequeña, puede llevar a errores grandes en los primeros pasos que luego son arrastrados y amplifican los siguientes.
+
+\begin{lstlisting}[caption = Implementación de la descomposición QR con GS]
+	function [Q,R] = custom_qr(A)
+		n = length(A);
+		Q(:,1) = A(:, 1) / norm(A(:, 1));
+
+		for i = 2 : n
+			u = A(:, i);
+			for j = i-1  : -1 : 1
+				u = u - A(:, i)' * Q(:, j) * Q(:, j);
+			end
+			Q(:, i) = u / norm(u);
+		end
+		Q = -1*Q;
+		R = Q'*A;
+	end
+\end{lstlisting}
+\subsubsection{Método QR - GS modificado}
+
+A continuación se muestra el método modificado de GS.
+
+\begin{lstlisting}[caption = Implementación de la descomposición QR con GS]
+	function [Q,R] = modGS_qr(A)
+		R = 0;
+		m = size(A)(1);
+		n = size(A)(2);
+		for k = 1 : n
+			R(k,k) = norm(A(1:m,k));
+			Q(1:m,k) = A(1:m,k) / R(k,k);
+			for j=k+1 : n
+				R(k,j) = Q(1:m,k)' * A(1:m,j);
+				A(1:m,j) = A(1:m,j) - Q(1:m,k) * R(k,j);
+			end
+		end  
+	end
+\end{lstlisting}
+\subsubsection{Método QR - Rotaciónes de Givens}
+
+Dada una matriz cualquiera, se puede obtener una rotaciones de Givens tal que: \[  A=G B  \] siendo B igual a A pero con un elemento en 0. Este proceso se puede aplicar N veces para obtener una matriz triangular superior.
+De esta manera podemos definir a Q como la aplicación de todas las transformadas de rotación \[ Q = G_n ... G_1  Id  \] \[ R = G_n ... G_1  A  \]
+
+El método fue implementado siguiendo la propuesta de la cátedra, pero haciéndole una modificación para que se calcule correctamente Q.
+
+\begin{lstlisting}[caption = Implementación de la descomposición QR con GS]
+	function [Q,R] = givens_qr(A)
+		R = A;
+		m = size(A)(1);
+		n = size(A)(2);
+		Q = eye(m,n);
+		for k = 1 : n
+			for l = k +1 : m
+				if (R(l,k) == 0)
+					c = 1;
+					s = 0;
+				elseif abs(R(l,k)) < abs(R(k,k))
+					t = R(l,k) / R(k,k);
+					c = 1 / sqrt(1+t^2);
+					s = c * t;
+				else
+					z = R(k,k) / R(l,k);
+					s = 1/ sqrt(1 + z^2);
+					c = s*z;
+				end
+				G = [c,s; -s,c];
+				R([k,l] , k:n) = G * R([k,l], k : n);
+				Q([k,l] , 1:n) = G * Q([k,l], 1:n);
+			end
+		end
+		Q = Q';
+	end
+\end{lstlisting}
+
+
+
 
 \subsubsection{Método eig}
 
@@ -244,13 +310,13 @@ Como conclusión, logramos obtener correctamente los autovalores de una matriz G
 \section{Bibliografía}
 \begin{itemize}
 
-\item Apuntes de las clases teórica y práctica de la materia Métodos Numéricos Avanzados (Segundo Cuatrimestre, 2014).
+\item Apuntes de las clases teórica y práctica de la materia Métodos Numéricos Avanzados (Segundo Cuatrimestre, 2015).
 
-\item J. F. Grcar, "\ Operator coefficient methods for linear equations ", tech. report SAND89-8691, Sandia National Labs, 1989 
+\item Documento sobre descomposición QR proporcionado por la cátedra de Métodos Numéricos Avanzados (Segundo Cuatrimestre, 2015).
 
-\item \url{http://www.mathworks.com/help/matlab/ref/gallery.html}
+\item \url{http://www.win.tue.nl/casa/meetings/seminar/previous/_abstract051109_files/presentation_full.pdf}
 
-\item \url{http://www.cs.ox.ac.uk/pseudospectra/eigtool/documentation/menus/grcar_demo.html}
+\item \url{http://people.inf.ethz.ch/arbenz/ewp/Lnotes/chapter3.pdf}
 
 \end{itemize} 
 
