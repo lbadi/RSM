@@ -9,16 +9,11 @@ function [values, firstA] = qr_eig(n, nzr)
   tic;
   actual_value = 0;
   do
-    it = 0;
-    do
-      prevA = A;
-      [Q, R] = givens_qr(prevA);
-      A = R * Q;
-      it = it+1;
-    until(norm(A(n-actual_value, n-actual_value-1)) < error || it == max_iterations);
+    prevA = A;
+    [Q, R] = givens_qr(prevA);
+    A = R * Q;
     if (abs(A(n-actual_value,n-actual_value-1)) < error*(abs(A(n-actual_value-1,n-actual_value-1))+abs(A(n-actual_value,n-actual_value)))) %Shif
       values(n-actual_value,1) = A(n-actual_value,n-actual_value);
-
       A = A(1:n-actual_value-1, 1:n-actual_value-1);
       actual_value = actual_value+1;
 
