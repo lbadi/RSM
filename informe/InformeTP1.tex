@@ -1,4 +1,5 @@
-\documentclass[a4paper,10pt]{article}
+% !TEX encoding = UTF-8 Unicode
+\documentclass[a4paper,10pt,spanish]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -68,25 +69,24 @@ Resumen
 \end{large}
 \end{center}
 
-Las matrices de valores dispersos(RSM) son un tipo de matriz que poseen la particularidad de tener gran cantidad de valores iguales a ceros. Conceptualmente se pueden pensar como matrices que representan sistemas donde sus elementos tienen baja cantidad de conexiones entre si, por ejemplo una red de computadoras. En este informe nos enfocaremos a analizar solamente las matrices de valores dispersos aleatorios, construidas de tal manera que tengan la misma cantidad de elementos diferentes a cero en cada columna. 
+Las matrices de valores dispersos(RSM) son un tipo de matriz que poseen la particularidad de tener gran cantidad de valores iguales a ceros. Conceptualmente se pueden pensar como matrices que representan sistemas donde sus elementos tienen baja cantidad de conexiones entre si, por ejemplo una red de computadoras. En este informe nos enfocaremos a analizar solamente las matrices de valores dispersos aleatorios, construidas de tal manera que tengan la misma cantidad de elementos diferentes a cero en cada columna.
 
 \section{Introducción}
 En el siguiente informe detallamos una implementación en Octave para el cálculo de autovalores en matrices RSM. Primero describiremos la implementación realizada, las decisiones que se tomaron, las dificultades que se encontraron y posibles mejoras que se pueden realizar en un futuro.
 
 \section{Metodología}
-Se decidió implementar todos los métodos en Octave ya que nos resulta conveniente al tener que realizar operaciones de matrices, como el producto, porque las posee implementadas.
-Si bien para almacenar estas matrices se pueden utilizar estructuras como listas de listas o representaciones como Yale(utilización de 3 arrays), se opto por representarlas utilizando las matrices de Octave para poder utilizar las operaciones de matrices que este lenguaje ofrece. También se pensó en almacenarlas utilizando una estructura y a la hora de operar realizar una conversión a matrices de Octave. Se decidió no realizar esto ultimo por el costo de procesamiento que conlleva tener que estar haciendo conversiones constantemente.
-Para obtener los autovalores se decidió utilizar el método iterativo de QR visto en clase, con la salvedad de que este método tiene que contemplar los casos donde los autovalores son complejos. Para determinar en que momento hace falta calcular estos valores complejos se decidió utilizar doble shifteos. 
+Se decidió implementar todos los métodos en Octave ya que posee varias herramientas útiles ya implementadas para realizar operaciones con matrices (por ejemplo el producto).
+Si bien para almacenar estas matrices se pueden utilizar estructuras como listas de listas o representaciones como Yale(utilización de 3 vectores), se optó por representarlas utilizando las matrices de Octave para aprovechar las ventajas antes mencionadas. También, se pensó en almacenarlas utilizando una estructura y a la hora de operar realizar una conversión a matrices de Octave. Se desestimó esta idea por el costo de procesamiento que conlleva realizar conversiones constantemente.
+Para obtener los autovalores se decidió utilizar el método iterativo de QR visto en clase, con la salvedad de que en este trabajo se contemplan los casos donde los autovalores son complejos. Para determinar en que momento hace falta calcular estos valores complejos se decidió utilizar doble shifteos.
 
 Para la descomposición QR se implemento el método de GS visto en la clase, el método modificado de GS y el método de las rotaciones de Givens.
 
 \subsection{Implementación}
 \subsubsection{Generación RSM}
 
-Para la generación de las matrices RSM primero se generan dos matrices, una de números random y de dimensión N x NZR, la otra de ceros y de dimensiones N - NZR x N.
+Para la generación de las matrices RSM primero se generan dos matrices, una de números aleatorios y de dimensión N x NZR, la otra de ceros y de dimensiones N - NZR x N.
 Luego estas matrices se concatenan una debajo de la otra para formar una matriz de dimensiones N x N. Por ultimo se itera sobre todas las columnas y se permuta de manera aleatoria las filas utilizando la función randperm de Octave.
 Se puede demostrar que el orden de complejidad de esta función es \[N  O ( randperm ) \].
-
 \begin{lstlisting}[caption = Implementación del generador de matrices RSM]
 	function ret = generateRSM(N,NZR)
 		A = rand(NZR,N);
@@ -101,7 +101,6 @@ Se puede demostrar que el orden de complejidad de esta función es \[N  O ( rand
 \end{lstlisting}
 
 \subsubsection{Método QR - GS}
-
 Como se puede ver a continuación, se implemento el método de GS propuesto por la cátedra sin realizare ninguna modificación. Este método tiene la desventaja que como genera vectores de norma pequeña, puede llevar a errores grandes en los primeros pasos que luego son arrastrados y amplifican los siguientes.
 
 \begin{lstlisting}[caption = Implementación de la descomposición QR con GS]
@@ -136,7 +135,7 @@ A continuación se muestra el método modificado de GS.
 				R(k,j) = Q(1:m,k)' * A(1:m,j);
 				A(1:m,j) = A(1:m,j) - Q(1:m,k) * R(k,j);
 			end
-		end  
+		end
 	end
 \end{lstlisting}
 \subsubsection{Método QR - Rotaciónes de Givens}
@@ -180,8 +179,9 @@ El método fue implementado siguiendo la propuesta de la cátedra, pero haciénd
 
 \subsubsection{Método eig}
 
-Una vez implementada la descomposición QR, resultó sencillo implementar la función \texttt{eig} (Ver código 2). La función se implementó de manera recursiva tal como fue mostrada en la clase. El caso base de esta función es 
-con una matriz de 2x2 ya que el cálculo de sus autovalores implica encontrar las raíces de un polinomio de grado 2. El paso recursivo consta en hallar la descomposición QR de la matriz  y hacer el producto entre R y Q.
+Luego de implementar la descomposición QR, se prosiguió a implementar la funcion \texttt{eig}. 
+
+Una vez implementada la descomposición QR, resultó sencillo implementar la función \texttt{eig} (Ver código 2). La función se implementó de manera recursiva tal como fue mostrada en la clase. El caso base de esta función es con una matriz de 2x2 ya que el cálculo de sus autovalores implica encontrar las raíces de un polinomio de grado 2. El paso recursivo consta en hallar la descomposición QR de la matriz  y hacer el producto entre R y Q.
 
 Al momento en que la matriz converge, si los autovalores son reales se encontrarán en la diagonal. Si los autovalores son complejos, obtendremos matrices de dimensión 2 en la diagonal y se pueden obtener los autovalores conjugados de ellas. Si la matriz GRCAR es de dimensión impar habrá exactamente un autovalor real y este aparecerá en la última fila y columna de la matriz resultantes. Una matriz de dimensión par sólo tendrá autovalores complejos conjugados (ninguno real).
 
@@ -233,11 +233,11 @@ public static List<Complex> eig(double[][] m) {
 
 \subsubsection{Método Producto QR}
 
-Analizando en detalle el recorrido de los ciclos en el producto de las matrices RxQ encontramos una forma de disminuir la cantidad de operaciones y hacerlo ligeramente más eficiente. Por lo tanto implementamos el método  \texttt{matrizRprodQ} en reemplazo del método  \texttt{matrixprod} invocado en la línea 10 del método \texttt{eig}.
+Analizando en detalle el recorrido de los ciclos en el producto de las matrices RxQ encontramos una forma de disminuir la cantidad de operaciones y hacerlo ligeramente más eficiente. Por lo tanto implementamos el método  \texttt{matrizRprodQ} en reemplazo del método  \texttt{matrixprod} invocado en la linea 10 del método \texttt{eig}.
 
 La matriz Q generada a partir de la matriz GRCAR contiene una gran cantidad de ceros por debajo de la diagonal, y la  matriz R es diagonal superior. Entonces, al calcular los elementos de la matriz resultante de la multiplicación de R por Q se realizaban ciclos innecesarios porque al haber tantos ceros, había muchas multiplicaciones resultaban nulas y no aportaban al cálculo respectivo.
 
-En la línea 6 del Código 3 se ve como el método \texttt{matrizRprodQ}  ignora las sumas de los productos que van a ser cero (por todos los ceros debajo de la diagonal).
+En la linea 6 del Código 3 se ve como el método \texttt{matrizRprodQ}  ignora las sumas de los productos que van a ser cero (por todos los ceros debajo de la diagonal).
 
 \begin{lstlisting}[caption = Optimización del producto entre R y Q]s
 	public static double[][] matrixRprodQ(double[][] r, double[][] q) {
@@ -258,6 +258,9 @@ En la línea 6 del Código 3 se ve como el método \texttt{matrizRprodQ}  ignora
 \pagebreak
 
 \section{Resultados}
+
+\includegraphics[width=100mm]{GenerateRSM.png} 
+
 Si bien durante las primeras implementaciones pudimos obtener correctamente los autovalores de cualquier tipo de matriz, los tiempos son considerablemente mayores a los de la función \texttt{eig} de Octave.
 
 Los resultados obtenidos se muestran en el Cuadro 1:
@@ -272,7 +275,7 @@ Los resultados obtenidos se muestran en el Cuadro 1:
 15                 & 74                 \\
 30                 & 4475                 \\
 50                 & 21393                \\
-100                & 243651                   
+100                & 243651
 \end{tabular}
 \caption[Texto del índice (opcional)]{Tiempo transcurrido del cálculo de autovalores en base a la dimensión N de la matriz.}
 \end{table}
@@ -281,7 +284,7 @@ Los resultados obtenidos se muestran en el Cuadro 1:
 Si bien obtuvimos una implementación donde el método QR implementado funciona para cualquier matriz cuadrada vamos en la próxima iteración a aprovechar la gran cantidad de ceros de la matriz GRCAR para bajar considerablemente los tiempos y obtener una implementación que calcule los autovalores sólo a una matriz rala.
 
 Los resultados obtenidos con esta nueva implementación se muestran en el Cuadro 2:
- 
+
 \begin{center}
 \begin{table}[!htbp]
 \centering
@@ -292,7 +295,7 @@ Los resultados obtenidos con esta nueva implementación se muestran en el Cuadro
 15                 & 251                \\
 30                 & 4461                 \\
 50                 & 20964                \\
-100                & 233487                         
+100                & 233487
 \end{tabular}
 \caption[Texto del índice (opcional)]{Tiempo transcurrido del cálculo de autovalores en base a la dimensión N de la matriz con las mejoras de procesamiento de matriz rala.}
 \end{table}
@@ -318,7 +321,7 @@ Como conclusión, logramos obtener correctamente los autovalores de una matriz G
 
 \item \url{http://people.inf.ethz.ch/arbenz/ewp/Lnotes/chapter3.pdf}
 
-\end{itemize} 
+\end{itemize}
 
 \pagebreak
 
@@ -352,11 +355,11 @@ public class Vector {
 		}
 		return res;
 	}
-	
+
 	/**
 	 * Método para obtener la n-ésima columna de una matriz.
 	 * @param m : Matriz double[]
-	 * @param n : Índice n de la columna (0 =< n <= col(m))
+	 * @param n : índice n de la columna (0 =< n <= col(m))
 	 * @return La n-ésima columna de la matriz m
 	 */
 	public static double[] getColumn(double[][] m, int n) {
@@ -380,7 +383,7 @@ public class Vector {
 		}
 		return res;
 	}
-	
+
 	/**
 	 * Producto Interno entre vectores
 	 * @param x : Vector double[]
@@ -430,7 +433,7 @@ public class Vector {
 		}
 		return res;
 	}
-	
+
 	/**
 	 * Método del determinante.
 	 * @param mat : Una matriz cuadrada double[][]
@@ -468,7 +471,7 @@ public class Vector {
 				aux[i][j] = mat[j][i];
 		return aux;
 	}
-	
+
 	/**
 	 * Método para imprimir una matriz double[][]
 	 * @param matrix : Matriz a imprimir en pantalla
@@ -528,11 +531,11 @@ public class Complex {
 	public double mod() {
 		return Math.sqrt(real * real + img * img);
 	}
-	
+
 	public double getReal(){
 		return real;
 	}
-	
+
 	/**
 	 * Fórmula Resolvente Cuadrática
 	 * @param a Coeficiente de grado 2
