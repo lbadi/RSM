@@ -179,131 +179,75 @@ El método fue implementado siguiendo la propuesta de la cátedra, pero haciénd
 
 \subsubsection{Método eig}
 
-Luego de implementar la descomposición QR, se prosiguió a implementar la funcion \texttt{eig}. 
+Luego de implementar la descomposición QR, se prosiguió a implementar la funcion \texttt{eig}. Primero se utiliza el algóritmo generateRSM antes implementado para generar una matriz de valores dispersos, a la cual llamamos A. Luego, iterativamente se realiza la descomposición QR de A, utilizando alguno de los métodos antes propuestos y luego A = RQ. Se evalúan los elementos (matrices de 2x2) de la diagonal para calcular los autovalores. El elemento inferior izquierdo de cada matriz de la diagonal es el que determina si los autovalores son reales o complejos. Si éste es igual a 0, entonces los autovalores resultan ser reales, mientras que si éste es distinto a 0, los autovalores son imaginarios.
 
-Una vez implementada la descomposición QR, resultó sencillo implementar la función \texttt{eig} (Ver código 2). La función se implementó de manera recursiva tal como fue mostrada en la clase. El caso base de esta función es con una matriz de 2x2 ya que el cálculo de sus autovalores implica encontrar las raíces de un polinomio de grado 2. El paso recursivo consta en hallar la descomposición QR de la matriz  y hacer el producto entre R y Q.
+\begin{lstlisting}[caption = Obtención de Autovalores]
 
-Al momento en que la matriz converge, si los autovalores son reales se encontrarán en la diagonal. Si los autovalores son complejos, obtendremos matrices de dimensión 2 en la diagonal y se pueden obtener los autovalores conjugados de ellas. Si la matriz GRCAR es de dimensión impar habrá exactamente un autovalor real y este aparecerá en la última fila y columna de la matriz resultantes. Una matriz de dimensión par sólo tendrá autovalores complejos conjugados (ninguno real).
+function [values, timeElapsed] = qr_eig(firstA,error,qr_method)
+  more off;
+  A = firstA;
+  n = length(A);
+  tic;
+  actual_value = 0;
+  do
+    prevA = A;
+    [Q, R] = qr_method(prevA);
+    A = R * Q;
+    if (abs(A(n-actual_value,n-actual_value-1)) < error*(abs(A(n-actual_value-1,n-actual_value-1))+abs(A(n-actual_value,n-actual_value)))) %Shif
+      values(n-actual_value,1) = A(n-actual_value,n-actual_value);
+      A = A(1:n-actual_value-1, 1:n-actual_value-1);
+      actual_value = actual_value+1;
 
-Como dijimos anteriormente, la precisión elegida para el cálculo de autovalores es de $10^{-4}$ por lo tanto, decidimos agregar un chequeo de los determinantes de la matrices de 2x2 que se forman en la diagonal y compararlos con los anteriores. Cuando la diferencia de todos los determinantes con sus respectivos antecesores se hagan menor que el error, el algoritmo retorna. De esta manera no es necesario que la matriz haga las iteraciones máximas para finalizar. Como dicho chequeo es costoso para matrices de gran tamaño, se utiliza una constante de frecuencia de chequeo para no tener que revisar el error en cada paso sino de a pasos mas grandes a medida que la matriz sea de mayor dimensión.
+    elseif (abs(A(n-actual_value-1,n-actual_value-2)) < error*(abs(A(n-actual_value-1,n-actual_value-1))+abs(A(n-actual_value-2,n-actual_value-2)))) %Double-Shif
+      a = A(n-actual_value-1,n-actual_value-1);
+      b = A(n-actual_value-1,n-actual_value);
+      c = A(n-actual_value,n-actual_value-1);
+      d = A(n-actual_value,n-actual_value);
+      [x1, x2] = cuadratic_eq(1, -a-d, a*d - c*b);
+      values(n-actual_value-1,1) = x1;
+      values(n-actual_value,1) = x2;
 
-\begin{lstlisting}[caption = Implementación del algoritmo QR en Java]
-public static List<Complex> eig(double[][] m) {
-		List<Complex> eigs = new ArrayList<Complex>();
-		if (m.length == 2 && m[0].length == 2)
-			return Complex.roots(1, -m[0][0] - m[1][1], Vector.determinant(m));
-		double [] dets = new double[(m.length)/2];
-		double[][] T = m;
-		boolean flag = false;
-		for (int k = 0; k < MAX_ITERATIONS && !flag; k++) {
-			Map<String, double[][]> qr = QR(T);
-			T = matrixprod(qr.get("R"), qr.get("Q"));
-			if( k % (m.length*CHECK_FREQUENCY) == 0){
-				double[][] current = new double[2][2];
-				flag = true;
-				for (int i = 0; i < m.length - m.length % 2; i += 2) {
-					current[0][0] = T[i][i];
-					current[0][1] = T[i][i + 1];
-					current[1][0] = T[i + 1][i];
-					current[1][1] = T[i + 1][i + 1];
-					double currentdet = Vector.determinant(current);
-					if(Math.abs(dets[i/2]-currentdet) > E){
-						flag = false;
-					}
-					dets[i/2]=currentdet;
-				}
-			}
-		}
-		for (int i = 0; i < m.length - m.length % 2; i += 2) {
-			double[][] aux = new double[2][2];
-			aux[0][0] = T[i][i];
-			aux[0][1] = T[i][i + 1];
-			aux[1][0] = T[i + 1][i];
-			aux[1][1] = T[i + 1][i + 1];
-			eigs.addAll(eig(aux));
-		}
-		if (m.length % 2 == 1) {
-			eigs.add(new Complex(T[T.length - 1][T.length - 1], 0));
-		}
-		return eigs;
-	}
-\end{lstlisting}
+      A = A(1:n-actual_value-2, 1:n-actual_value-2);
+      actual_value = actual_value + 2;
+    end
+  until(actual_value >= n-2);
+  if(actual_value == n-2)
+      a = A(n-actual_value-1,n-actual_value-1);
+      b = A(n-actual_value-1,n-actual_value);
+      c = A(n-actual_value,n-actual_value-1);
+      d = A(n-actual_value,n-actual_value);
+      [x1, x2] = cuadratic_eq(1, -a-d, a*d - c*b);
+      values(n-actual_value-1,1) = x1;
+      values(n-actual_value,1) = x2;
+      A = A(1:n-actual_value-2, 1:n-actual_value-2);
+  elseif(actual_value == n-1)
+    values(1) = A(1,1);
+  end
+  % values = sort(values, 'descend');
+  timeElapsed = toc();
+end
 
-\subsection{Optimización}
-
-\subsubsection{Método Producto QR}
-
-Analizando en detalle el recorrido de los ciclos en el producto de las matrices RxQ encontramos una forma de disminuir la cantidad de operaciones y hacerlo ligeramente más eficiente. Por lo tanto implementamos el método  \texttt{matrizRprodQ} en reemplazo del método  \texttt{matrixprod} invocado en la linea 10 del método \texttt{eig}.
-
-La matriz Q generada a partir de la matriz GRCAR contiene una gran cantidad de ceros por debajo de la diagonal, y la  matriz R es diagonal superior. Entonces, al calcular los elementos de la matriz resultante de la multiplicación de R por Q se realizaban ciclos innecesarios porque al haber tantos ceros, había muchas multiplicaciones resultaban nulas y no aportaban al cálculo respectivo.
-
-En la linea 6 del Código 3 se ve como el método \texttt{matrizRprodQ}  ignora las sumas de los productos que van a ser cero (por todos los ceros debajo de la diagonal).
-
-\begin{lstlisting}[caption = Optimización del producto entre R y Q]s
-	public static double[][] matrixRprodQ(double[][] r, double[][] q) {
-		double[][] res = new double[r.length][q[0].length];
-		for (int i = 0; i < res.length; i++) {
-			for (int j = 0; j < res[0].length; j++) {
-				double aux = 0;
-				for (int k = i; k < r[0].length && k <= 2*(Math.floor(j/2)+1); k++) {
-					aux += (r[i][k] * q[k][j]);
-				}
-				res[i][j] = aux;
-			}
-		}
-		return res;
-	}
 \end{lstlisting}
 
 \pagebreak
 
 \section{Resultados}
 
-\includegraphics[width=100mm]{GenerateRSM.png} 
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=120mm]{GenerateRSM.png} 
+    \caption{Eficiencia del método GenerateRSM, con 20\% de los valores de la columna en 0}
+\end{figure}
 
-Si bien durante las primeras implementaciones pudimos obtener correctamente los autovalores de cualquier tipo de matriz, los tiempos son considerablemente mayores a los de la función \texttt{eig} de Octave.
+Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta de manera lineal con respecto a las dimensiones de la matriz.
 
-Los resultados obtenidos se muestran en el Cuadro 1:
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=120mm]{eig_comp.png}  
+    \caption{Eficiencia en el calculo de autovalores}
+\end{figure}
 
-\begin{center}
-\begin{table}[h]
-\centering
-\begin{tabular}{cc}
-\hline
-\textbf{Dimensión (nxn)} & \textbf{Tiempo (ms)} \\ \hline
-5                  & 33                 \\
-15                 & 74                 \\
-30                 & 4475                 \\
-50                 & 21393                \\
-100                & 243651
-\end{tabular}
-\caption[Texto del índice (opcional)]{Tiempo transcurrido del cálculo de autovalores en base a la dimensión N de la matriz.}
-\end{table}
-\end{center}
-
-Si bien obtuvimos una implementación donde el método QR implementado funciona para cualquier matriz cuadrada vamos en la próxima iteración a aprovechar la gran cantidad de ceros de la matriz GRCAR para bajar considerablemente los tiempos y obtener una implementación que calcule los autovalores sólo a una matriz rala.
-
-Los resultados obtenidos con esta nueva implementación se muestran en el Cuadro 2:
-
-\begin{center}
-\begin{table}[!htbp]
-\centering
-\begin{tabular}{cc}
-\hline
-\textbf{Dimensión (nxn)} & \textbf{Tiempo (ms)} \\ \hline
-5                  & 38                \\
-15                 & 251                \\
-30                 & 4461                 \\
-50                 & 20964                \\
-100                & 233487
-\end{tabular}
-\caption[Texto del índice (opcional)]{Tiempo transcurrido del cálculo de autovalores en base a la dimensión N de la matriz con las mejoras de procesamiento de matriz rala.}
-\end{table}
-\end{center}
-
-
-Como se puede ver, el tiempo transcurrido en matrices de tamaño considerable es menor que en la implementación previa. Sin embargo, los mismos siguen siendo considerablemente mayores que los del octave. Para una dimensión de 200 el programa terminaba por la cantidad de iteraciones y el error con respecto al valor real era mayor al elegido. Con matrices mas grandes, de 500x500 por ejemplo, nuestro programa ni siquiera llega a devolver un valor. En cambio, si uno prueba la matriz en octave el resultado es devuelto en cuestión de segundos.
-
+La figura 2 es un modelo representativo del tiempo requerido para calcular los autovalores. Se encuentra disponible el script testEigScript en el cual se pueden modificar los parámetros para realizar el análisis de los métodos para calcular autovalores. En todos los casos el método QR con GS resultó el mas eficiente. Cabe resaltar que eig() de octave resultó considerablemente mas eficiente que los métodos implementados, generalmente alrededor de cinco ordenes de magnitud de diferencia. El error utilizado fue en todos los casos 0.00001.
 
 \section{Conclusiones}
 Como conclusión, logramos obtener correctamente los autovalores de una matriz GRCAR de hasta una dimensión de un n=100. Viendo los tiempos transcurridos en nuestra implementación, podemos deducir que un lenguaje de alto nivel como java no fue la mejor elección a la hora de trabajar con matrices de gran dimensión. Hay que tener en cuenta que utilizamos nuestras propias implementaciones de funciones necesarias para el manejo de matrices y vectores, las cuales en eficiencia no están a la altura de las de un lenguaje de programación con funciones matemáticas pre-programadas (octave).

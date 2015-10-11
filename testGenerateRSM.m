@@ -16,5 +16,4 @@ function [graph,time] = testGenerateRSM()
 	xlabel ("Dimension");
 	ylabel ("Tiempo(s)");
 	time = y;
-	print -djpg image.jpg
 end

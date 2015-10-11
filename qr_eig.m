@@ -1,16 +1,12 @@
-function [values, firstA] = qr_eig(n, nzr)
+function [values, timeElapsed] = qr_eig(firstA,error,qr_method)
   more off;
-
-  max_iterations = 30;
-  error = 0.00001;
-
-  A = generateRSM(n, nzr);
-  firstA = A;
+  A = firstA;
+  n = length(A);
   tic;
   actual_value = 0;
   do
     prevA = A;
-    [Q, R] = givens_qr(prevA);
+    [Q, R] = qr_method(prevA);
     A = R * Q;
     if (abs(A(n-actual_value,n-actual_value-1)) < error*(abs(A(n-actual_value-1,n-actual_value-1))+abs(A(n-actual_value,n-actual_value)))) %Shif
       values(n-actual_value,1) = A(n-actual_value,n-actual_value);
@@ -43,7 +39,7 @@ function [values, firstA] = qr_eig(n, nzr)
     values(1) = A(1,1);
   end
   % values = sort(values, 'descend');
-  toc;
+  timeElapsed = toc();
 end
 
 
