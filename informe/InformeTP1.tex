@@ -179,7 +179,7 @@ El método fue implementado siguiendo la propuesta de la cátedra, pero haciénd
 
 \subsubsection{Método eig}
 
-Luego de implementar la descomposición QR, se prosiguió a implementar la funcion \texttt{eig}. Primero se utiliza el algóritmo generateRSM antes implementado para generar una matriz de valores dispersos, a la cual llamamos A. Luego, iterativamente se realiza la descomposición QR de A, utilizando alguno de los métodos antes propuestos y luego A = RQ. Se evalúan los elementos (matrices de 2x2) de la diagonal para calcular los autovalores. El elemento inferior izquierdo de cada matriz de la diagonal es el que determina si los autovalores son reales o complejos. Si éste es igual a 0, entonces los autovalores resultan ser reales, mientras que si éste es distinto a 0, los autovalores son imaginarios.
+Luego de implementar la descomposición QR, se prosiguió a implementar la función \texttt{eig}. Primero se utiliza el algoritmo generateRSM antes implementado para generar una matriz de valores dispersos, a la cual llamamos A. Luego, iterativamente se realiza la descomposición QR de A, utilizando alguno de los métodos antes propuestos y luego A = RQ. Se evalúan los elementos (matrices de 2x2) de la diagonal para calcular los autovalores. El elemento inferior izquierdo de cada matriz de la diagonal es comparado con la suma de dos elementos de la diagonal multiplicado por una tolerancia o error. En particular si el elemento : \[A_i_{j-1} < error ( | A_i_j | + | A_{i-1}_{j-1} |) \] hay que obtener un auto-valor real. Si esto no sucede pero : \[A_i_{j-1} < error ( | A_{i-2}_{j-2} | + | A_{i-1}_{j-1} |) \] hay que obtener un valor complejo obteniendo los autovalores de una matriz de 2x2. Si ninguna de estas cosas suceden hay que seguir iterando. Cada vez que obtenemos un autovalor reducimos la matriz ya que los valores convergen de abajo para arriba.
 
 \begin{lstlisting}[caption = Obtención de Autovalores]
 
@@ -223,7 +223,6 @@ function [values, timeElapsed] = qr_eig(firstA,error,qr_method)
   elseif(actual_value == n-1)
     values(1) = A(1,1);
   end
-  % values = sort(values, 'descend');
   timeElapsed = toc();
 end
 
@@ -236,10 +235,8 @@ end
 \begin{figure}[!htb]
     \centering
     \includegraphics[width=120mm]{GenerateRSM.png} 
-    \caption{Eficiencia del método GenerateRSM, con 20\% de los valores de la columna en 0}
+    \caption{Eficiencia del método GenerateRSM, con 20\% de los valores de la columna distintos a 0}
 \end{figure}
-
-Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta de manera lineal con respecto a las dimensiones de la matriz.
 
 \begin{figure}[!htb]
     \centering
@@ -247,10 +244,37 @@ Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta
     \caption{Eficiencia en el calculo de autovalores}
 \end{figure}
 
+\begin{center}
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{cc}
+\hline
+\textbf{Dimensión (nxn)} & \textbf{Tiempo (sec)} \\ \hline
+50											& 29								\\
+100											& 656								\\
+200											& 10800+							\\
+\end{tabular}
+\caption[Eficiencia en el calculo de autovalores] {Tiempo hasta obtener los autovalores.}
+\end{table}
+\end{center}
+
+Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta de manera lineal con respecto a las dimensiones de la matriz. Se puede ver un comportamiento cuadrático como era de esperarse ya que utilizamos la función de Octave randperm dentro de un ciclo.
+
+
 La figura 2 es un modelo representativo del tiempo requerido para calcular los autovalores. Se encuentra disponible el script testEigScript en el cual se pueden modificar los parámetros para realizar el análisis de los métodos para calcular autovalores. En todos los casos el método QR con GS resultó el mas eficiente. Cabe resaltar que eig() de octave resultó considerablemente mas eficiente que los métodos implementados, generalmente alrededor de cinco ordenes de magnitud de diferencia. El error utilizado fue en todos los casos 0.00001.
 
+En la tabla 1 se puede observar el tiempo transcurrido hasta obtener los autovalores utilizando el método de descomposición QR de GS. El NZR para todos los casos es de un 20\% de N.
+
+\pagebreak
+
 \section{Conclusiones}
-Como conclusión, logramos obtener correctamente los autovalores de una matriz GRCAR de hasta una dimensión de un n=100. Viendo los tiempos transcurridos en nuestra implementación, podemos deducir que un lenguaje de alto nivel como java no fue la mejor elección a la hora de trabajar con matrices de gran dimensión. Hay que tener en cuenta que utilizamos nuestras propias implementaciones de funciones necesarias para el manejo de matrices y vectores, las cuales en eficiencia no están a la altura de las de un lenguaje de programación con funciones matemáticas pre-programadas (octave).
+Como conclusión, logramos obtener correctamente los autovalores de una matriz RSM de hasta una dimensión de un N=100. También podemos concluir que la eficiencia de la descomposición QR para calcular autovalores utilizando este método es determinante, ya que es un proceso que se va a estar realizando constantemente. Si deberíamos seguir optimizando este proceso , habría que rever las implementaciones de la descomposición QR utilizada.
+
+Intentamos obtener los autovalores de una matriz de 200x200 pero luego de dos horas corriendo solo pudo sacar los primeros 43 autovalores. Hay que considerar que todas las pruebas se realizaron con un error de 0.00001.
+
+Algo que nos sorprendió es que la descomposición por rotaciones de Givens dio mayores tiempo que la descomposición de GS. Esto nos hace pensar que hay una manera mucho mas efectiva de implementarla (Como Fast-Givens).
+
+Otra cosa que llama la atención es el tiempo despreciable que tiene Octave en comparación con nuestros métodos. Esto nos hace pensar que hay muchas optimizaciones que mejoren considerablemente la complejidad del método. También esta la posibilidad de que se utilize un enfoque diferente.
 
 \pagebreak
 
@@ -268,399 +292,5 @@ Como conclusión, logramos obtener correctamente los autovalores de una matriz G
 \end{itemize}
 
 \pagebreak
-
-\begin{large}
-ANEXO
-\end{large}
-
-\begin{center}
-\textbf{Vector.java}
-\end{center}
-
-\begin{verbatim}
-
-package grcar;
-
-/**
- * Clase auxiliar para el manejor de matrices double[][] y vectores double[]. *
- */
-public class Vector {
-
-	/**
-	 * Suma Vectorial
-	 * @param v1 : Vector double[]
-	 * @param v2 : Vector double[]
-	 * @return Vector suma v1() + v2()
-	 */
-	public static double[] sumVec(double[] v1, double[] v2) {
-		double[] res = new double[v1.length];
-		for (int i = 0; i < v1.length; i++) {
-			res[i] = v1[i] + v2[i];
-		}
-		return res;
-	}
-
-	/**
-	 * Método para obtener la n-ésima columna de una matriz.
-	 * @param m : Matriz double[]
-	 * @param n : índice n de la columna (0 =< n <= col(m))
-	 * @return La n-ésima columna de la matriz m
-	 */
-	public static double[] getColumn(double[][] m, int n) {
-		double[] res = new double[m.length];
-		for (int i = 0; i < m.length; i++) {
-			res[i] = m[i][n];
-		}
-		return res;
-	}
-
-	/**
-	 * Producto entre vector V y escalar X
-	 * @param v : Vector double[]
-	 * @param x : Escalar double
-	 * @return Vector x * v()
-	 */
-	public static double[] prodVectEsc(double[] v, double x) {
-		double[] res = new double[v.length];
-		for (int i = 0; i < v.length; i++) {
-			res[i] = v[i] * x;
-		}
-		return res;
-	}
-
-	/**
-	 * Producto Interno entre vectores
-	 * @param x : Vector double[]
-	 * @param y : Vector double[]
-	 * @return Producto Interno <x,y>
-	 */
-	public static double prodInt(double[] x, double[] y) {
-		double[][] auxx = new double[1][x.length];
-		double[][] auxy = new double[1][y.length];
-		auxx[0] = x;
-		auxy[0] = y;
-		return matrixprod(auxy, traspose(auxx))[0][0];
-	}
-
-	/**
-	 * Norma 2 de un vector
-	 * @param v : Vector double[]
-	 * @return Norma 2 del vector v
-	 */
-	public static double norm2(double[] v) {
-		double aux = 0;
-		for (double x : v) {
-			aux += x * x;
-		}
-		return Math.sqrt(aux);
-	}
-
-	/**
-	 * Producto entre matrices
-	 * @param m1 : Matriz double[][]
-	 * @param m2 : Matriz double[][]
-	 * @return Matriz m1 * m2
-	 */
-	public static double[][] matrixprod(double[][] m1, double[][] m2) {
-		double[][] res = new double[m1.length][m2[0].length];
-		if (m1[0].length != m2.length) {
-			return null;
-		}
-		for (int i = 0; i < res.length; i++) {
-			for (int j = 0; j < res[0].length; j++) {
-				double aux = 0;
-				for (int k = 0; k < m1[0].length; k++) {
-					aux += (m1[i][k] * m2[k][j]);
-				}
-				res[i][j] = aux;
-			}
-		}
-		return res;
-	}
-
-	/**
-	 * Método del determinante.
-	 * @param mat : Una matriz cuadrada double[][]
-	 * @return El determinante de la matriz mat
-	 */
-	public static double determinant(double[][] mat) {
-		double result = 0;
-		if (mat.length == 2) {
-			result = mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0];
-			return result;
-		}
-		for (int i = 0; i < mat[0].length; i++) {
-			double temp[][] = new double[mat.length - 1][mat[0].length - 1];
-			for (int j = 1; j < mat.length; j++) {
-				System.arraycopy(mat[j], 0, temp[j - 1], 0, i);
-				System.arraycopy(mat[j], i + 1, temp[j - 1], i, mat[0].length
-						- i - 1);
-			}
-			if (mat[0][i] != 0) {
-				result += mat[0][i] * Math.pow(-1, i) * determinant(temp);
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Traspuesta de una matriz
-	 * @param mat : Una matriz double[][]
-	 * @returnLa traspuesta de la matriz mat
-	 */
-	public static double[][] traspose(double[][] mat) {
-		double[][] aux = new double[mat[0].length][mat.length];
-		for (int i = 0; i < mat[0].length; i++)
-			for (int j = 0; j < mat.length; j++)
-				aux[i][j] = mat[j][i];
-		return aux;
-	}
-
-	/**
-	 * Método para imprimir una matriz double[][]
-	 * @param matrix : Matriz a imprimir en pantalla
-	 */
-	public static void printMatrix(double[][] matrix) {
-		for (int i = 0; i < matrix.length; i++) {
-			for (int j = 0; j < matrix[0].length; j++) {
-				if (matrix[i][j] < 0) {
-					System.out.printf(" %.5f", matrix[i][j]);
-				} else {
-					System.out.printf("  %.5f", matrix[i][j]);
-				}
-			}
-			System.out.println();
-		}
-	}
-}
-
-\end{verbatim}
-
-\begin{center}
-\textbf{Complex.java}
-\end{center}
-
-\begin{verbatim}
-package grcar;
-
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * Clase auxiliar creada para el manejo de valores complejos.
- */
-public class Complex {
-
-	private double real;
-	private double img;
-
-	public Complex(double real, double img) {
-		this.real = real;
-		this.img = img;
-	}
-
-	@Override
-	public String toString() {
-		String realstring = String.format("%.5f", real);
-		String imgstring = String.format("%.5f", Math.abs(img));
-		if (img >= 0)
-			return realstring + " + " + imgstring + "i";
-		return realstring + " - " + imgstring + "i";
-	}
-
-	public Complex conjugate() {
-		return new Complex(real, -img);
-	}
-
-	public double mod() {
-		return Math.sqrt(real * real + img * img);
-	}
-
-	public double getReal(){
-		return real;
-	}
-
-	/**
-	 * Fórmula Resolvente Cuadrática
-	 * @param a Coeficiente de grado 2
-	 * @param b	Coeficiente de grado 1
-	 * @param c Coeficiente de grado 0
-	 * @return Las raíces del polinomnio de grado 2 ax^2 + bx + c (Reales y Complejas).
-	 */
-	public static List<Complex> roots(double a, double b, double c) {
-		List<Complex> res = new ArrayList<Complex>();
-		double x = (b * b) - (4 * a * c);
-		if (x > 0) {
-			res.add(0, new Complex(((-b + Math.sqrt(x)) / 2 * a), 0));
-			res.add(1, new Complex(((-b - Math.sqrt(x)) / 2 * a), 0));
-		} else {
-			res.add(0, new Complex(-b / (2 * a), Math.sqrt(Math.abs(x))
-					/ (2 * a)));
-			res.add(1, res.get(0).conjugate());
-		}
-		return res;
-	}
-}
-
-\end{verbatim}
-
-\begin{center}
-\textbf{Grcar.java}
-\end{center}
-
-\begin{verbatim}
-package grcar;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-public class Grcar {
-
-	private static final double E = 0.0001;
-	private static final long MAX_ITERATIONS = 10000;
-	private static final int CHECK_FREQUENCY = 1;
-
-	/**
-	 * Consigna A. Obtener la matriz Grcar de NxN
-	 * @param n : Dimensión de la Matriz Grcar a obtener
-	 * @return Matriz Grcar double[n][n]
-	 */
-	public static double[][] getGrcarMatrix(int n) {
-		int k = 3;
-		double[][] matrix = new double[n][n];
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				if (i == j) {
-					matrix[i][j] = 1;
-				} else if (i == (j + 1)) {
-					matrix[i][j] = -1;
-				} else if (j > i && j <= (i + k)) {
-					matrix[i][j] = 1;
-				} else {
-					matrix[i][j] = 0;
-				}
-			}
-		}
-		return matrix;
-	}
-
-	/**
-	 * Optimización del método matrixprod para el caso especial
-	 * con m1 = R y m2 = q de la descomposición QR.
-	 * @param r : Matriz R de la descomposición QR.
-	 * @param q : Matriz Q de la descomposición QR.
-	 * @return Matriz R * Q
-	 */
-	public static double[][] matrixRprodQ(double[][] r, double[][] q) {
-		double[][] res = new double[r.length][q[0].length];
-		for (int i = 0; i < res.length; i++) {
-			for (int j = 0; j < res[0].length; j++) {
-				double aux = 0;
-				for (int k = i; k < r[0].length && k <= 2*(Math.floor(j/2)+1); k++) {
-					aux += (r[i][k] * q[k][j]);
-				}
-				res[i][j] = aux;
-			}
-		}
-		return res;
-	}
-
-	/**
-	 * Descomposición QR de la matriz m.
-	 * @param m : Matriz double[][]
-	 * @return Mapa que contiene las matrices Q y R de la descomposición QR de la matriz m.
-	 * <"Q", Matriz Q>
-	 * <"R", Matrix R>
-	 */
-	public static Map<String, double[][]> QR(double[][] m) {
-		Map<String, double[][]> res = new HashMap<String, double[][]>();
-		double[][] Q = new double[m.length][m.length];
-		double[][] R = new double[m.length][m[0].length];
-		List<double[]> q = new ArrayList<double[]>();
-		for (int k = 0; k < m[0].length; k++) {
-			double[] v = Vector.getColumn(m, k);
-			double[] e = v;
-			for (int n = 0; n < q.size(); n++) {
-				double p = Vector.prodInt(v, q.get(n));
-				e = Vector.sumVec(e, Vector.prodVectEsc(q.get(n), -p));
-				R[n][k] = p;
-			}
-			double norm2e = Vector.norm2(e);
-			R[k][k] = norm2e;
-			e = Vector.prodVectEsc(e, 1 / norm2e);
-			q.add(e);
-			for (int i = 0; i < e.length; i++)
-				Q[i][k] = e[i];
-		}
-		res.put("Q", Q);
-		res.put("R", R);
-		return res;
-	}
-
-	/**
-	 * Método para el cálculo de autovalores de la matriz m
-	 * @param m : Matriz double[][]
-	 * @return Lista con los autovalores (reales y complejos) de la matriz m
-	 */
-	public static List<Complex> eig(double[][] m) {
-		List<Complex> eigs = new ArrayList<Complex>();
-		if (m.length == 2 && m[0].length == 2)
-			return Complex.roots(1, -m[0][0] - m[1][1], Vector.determinant(m));
-		double [] dets = new double[(m.length)/2];
-		double[][] T = m;
-		boolean flag = false;
-		for (int k = 0; k < MAX_ITERATIONS && !flag; k++) {
-			Map<String, double[][]> qr = QR(T);
-//			T = matrixprod(matrixprod(traspose(qr.get("Q")),T),qr.get("Q"));
-			T = matrixRprodQ(qr.get("R"), qr.get("Q"));
-//			T = matrixprod(qr.get("R"), qr.get("Q"));
-			if( k % (m.length*CHECK_FREQUENCY) == 0){
-				double[][] current = new double[2][2];
-				flag = true;
-				for (int i = 0; i < m.length - m.length % 2; i += 2) {
-					current[0][0] = T[i][i];
-					current[0][1] = T[i][i + 1];
-					current[1][0] = T[i + 1][i];
-					current[1][1] = T[i + 1][i + 1];
-					double currentdet = Vector.determinant(current);
-					if(Math.abs(dets[i/2]-currentdet) > E){
-						flag = false;
-					}
-					dets[i/2]=currentdet;
-				}
-			}
-		}
-		for (int i = 0; i < m.length - m.length % 2; i += 2) {
-			double[][] aux = new double[2][2];
-			aux[0][0] = T[i][i];
-			aux[0][1] = T[i][i + 1];
-			aux[1][0] = T[i + 1][i];
-			aux[1][1] = T[i + 1][i + 1];
-			eigs.addAll(eig(aux));
-		}
-		if (m.length % 2 == 1) {
-			eigs.add(new Complex(T[T.length - 1][T.length - 1], 0));
-		}
-		return eigs;
-	}
-
-	public static void main(String[] args) {
-		long init = System.currentTimeMillis();
-		int n = 10;
-		System.out.println("GRCAR " + n + "x" + n);
-		double[][] grcar = getGrcarMatrix(n);
-		System.out.println("\nAutovalores");
-		List<Complex> eigs = eig(grcar);
-		for (Complex e : eigs) {
-			System.out.println(e);
-		}
-		long end = System.currentTimeMillis();
-		System.out.println("\nTiempo transcurrido: " + (end - init) + " milisegundos");
-	}
-}
-
-\end{verbatim}
 
 \end{document}
