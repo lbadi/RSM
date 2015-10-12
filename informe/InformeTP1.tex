@@ -138,7 +138,7 @@ A continuación se muestra el método modificado de GS.
 		end
 	end
 \end{lstlisting}
-\subsubsection{Método QR - Rotaciónes de Givens}
+\subsubsection{Método QR - Rotaciones de Givens}
 
 Dada una matriz cualquiera, se puede obtener una rotaciones de Givens tal que: \[  A=G B  \] siendo B igual a A pero con un elemento en 0. Este proceso se puede aplicar N veces para obtener una matriz triangular superior.
 De esta manera podemos definir a Q como la aplicación de todas las transformadas de rotación \[ Q = G_n ... G_1  Id  \] \[ R = G_n ... G_1  A  \]
@@ -258,7 +258,7 @@ end
 \end{table}
 \end{center}
 
-Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta de manera lineal con respecto a las dimensiones de la matriz. Se puede ver un comportamiento cuadrático como era de esperarse ya que utilizamos la función de Octave randperm dentro de un ciclo.
+Se puede ver en la figura 1 que el método para generar la matriz RSM no aumenta de manera lineal con respecto a las dimensiones de la matriz. Este comportamiento cuadrático era de esperarse ya que utilizamos la función de Octave randperm dentro de un ciclo.
 
 
 La figura 2 es un modelo representativo del tiempo requerido para calcular los autovalores. Se encuentra disponible el script testEigScript en el cual se pueden modificar los parámetros para realizar el análisis de los métodos para calcular autovalores. En todos los casos el método QR con GS resultó el mas eficiente. Cabe resaltar que eig() de octave resultó considerablemente mas eficiente que los métodos implementados, generalmente alrededor de cinco ordenes de magnitud de diferencia. El error utilizado fue en todos los casos 0.00001.
@@ -274,7 +274,7 @@ Intentamos obtener los autovalores de una matriz de 200x200 pero luego de dos ho
 
 Algo que nos sorprendió es que la descomposición por rotaciones de Givens dio mayores tiempo que la descomposición de GS. Esto nos hace pensar que hay una manera mucho mas efectiva de implementarla (Como Fast-Givens).
 
-Otra cosa que llama la atención es el tiempo despreciable que tiene Octave en comparación con nuestros métodos. Esto nos hace pensar que hay muchas optimizaciones que mejoren considerablemente la complejidad del método. También esta la posibilidad de que se utilize un enfoque diferente.
+Otra cosa que llama la atención es el tiempo despreciable que tiene Octave en comparación con nuestros métodos. Esto nos hace pensar que hay muchas optimizaciones que mejoren considerablemente la complejidad del método. También esta la posibilidad de que se utilice un enfoque diferente.
 
 \pagebreak
 
